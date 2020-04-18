@@ -6,7 +6,7 @@ import time
 import hashlib
 import os
 import pickle as pk
-
+    
 
 def path_size(path):
     """Return the size path in octets (either file or folder)"""

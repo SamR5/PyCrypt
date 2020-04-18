@@ -10,9 +10,9 @@ Build an index with every files of the folder crypted and the empty directories.
 For decryption, the folder will be rebuilt according to the index by decrypting each enrty.  
 
 ## Is it secure ?
-__No__. The key (password) is hashed with SHA256 so it can take some time to find it if it is long and complex.  
+__No__. The key (password) is hashed with SHA256 so it can take some time to find if it is long and complex.  
 
-## TODO
+## Updates
+### 18/04/2020
  - disable radiobutton and the pw entry
- - Replace password by stars and bind 'Return' to show
- - add compiled C++ functions in cryptutils with ctypes to accelerate
+ - Replace password by stars and show only the letter on the left of the cursor

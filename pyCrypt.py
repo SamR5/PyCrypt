@@ -7,7 +7,11 @@ from tkinter import messagebox
 import threading # completion % not updating with master.after()
 import os
 import pickle as pk
+import string
 import cryptutils
+
+
+acceptedChars = string.printable[:string.printable.index(' ')]
 
 class CrypterGUI():
     def __init__(self, master):
@@ -15,8 +19,37 @@ class CrypterGUI():
         self.currentPath = "" # user path entry
         self.completion = 0.0 # % completion of the encryption/decryption
         self.encryptionRunning = False
+        self.cursor = 0
+        self.EncKey = ""
         self.gui()
         threading.Thread(target=self.update_speed).start()
+
+    def aaa(self, event=None):
+        if event.char in acceptedChars and event.char != '':
+            self.EncKey = self.EncKey[:self.cursor] + event.char +\
+                          self.EncKey[self.cursor:]
+            self.cursor += 1
+        else:
+            if event.keysym == "Right":
+                self.cursor = min(self.cursor+1, len(self.EncKey))
+            elif event.keysym == "Left":
+                self.cursor = max(self.cursor-1, 0)
+            elif event.keysym == "Home":
+                self.cursor = 0
+            elif event.keysym == "End":
+                self.cursor = len(self.EncKey)
+            elif event.keysym == "BackSpace":
+                if self.cursor != 0:
+                    self.EncKey = self.EncKey[:self.cursor-1] +\
+                                  self.EncKey[self.cursor:]
+                    self.cursor -= 1
+            elif event.keysym == "Delete":
+                self.EncKey = self.EncKey[:self.cursor] +\
+                              self.EncKey[self.cursor+1:]
+        if self.EncKey != '':
+            toDisp = '*'*(self.cursor-1) + self.EncKey[self.cursor-1] +\
+                     '*'*(len(self.EncKey)-self.cursor)
+            self.hiddenKey.set(toDisp)
     
     def gui(self):
         self.mainFrame = tk.Frame(self.master)
@@ -24,24 +57,24 @@ class CrypterGUI():
         self.mainFrame.pack()
         self.statusBar.pack(fill='x', side='bottom')
         
-        self.EncryptionKey = tk.StringVar()
-        self.EncryptionKey.set("Press enter to show")
+        self.hiddenKey = tk.StringVar()
         self.keyEntry = tk.Entry(self.mainFrame,
-                                 textvariable=self.EncryptionKey)
+                                 textvariable=self.hiddenKey)
+        self.keyEntry.bind("<KeyRelease>", self.aaa)
         keyLab = tk.Label(self.mainFrame, text='Encryption key')
         keyLab.grid(row=0, column=0, pady=20)
         self.keyEntry.grid(row=0, column=1)
         
         self.pathType = tk.IntVar()
-        tk.Radiobutton(self.mainFrame, text="File encryption",
-                       variable=self.pathType, value=0)\
-          .grid(row=1, column=0)
-        tk.Radiobutton(self.mainFrame, text="Directory encryption",
-                       variable=self.pathType, value=1)\
-          .grid(row=1, column=1)
-        tk.Radiobutton(self.mainFrame, text="File / Directory decryption",
-                       variable=self.pathType, value=2)\
-          .grid(row=2, columnspan=2)
+        self.rbFE = tk.Radiobutton(self.mainFrame, text="File encryption",
+                       variable=self.pathType, value=0)
+        self.rbFE.grid(row=1, column=0)
+        self.rbDE = tk.Radiobutton(self.mainFrame, text="Directory encryption",
+                       variable=self.pathType, value=1)
+        self.rbDE.grid(row=1, column=1)
+        self.rbFDD = tk.Radiobutton(self.mainFrame, text="File / Directory decryption",
+                       variable=self.pathType, value=2)
+        self.rbFDD.grid(row=2, columnspan=2)
             
         
         self.pathVar = tk.StringVar(value="Click here to choose a path")
@@ -68,13 +101,16 @@ class CrypterGUI():
     def widgets_lock(self, unlock=False):
         """When an encryption is running, lock the gui"""
         if unlock:
-            self.pathEnt["state"] = "normal"
             self.pathEnt.bind("<Button-1>", self.select_path)
-            self.encryB["state"] = "normal"
         else:
-            self.pathEnt["state"] = "disabled"
             self.pathEnt.unbind("<Button-1>")
-            self.encryB["state"] = "disabled"
+        state = "normal" if unlock else "disabled"
+        self.keyEntry["state"] = state
+        self.pathEnt["state"] = state
+        self.encryB["state"] = state
+        self.rbFE["state"] = state
+        self.rbDE["state"] = state
+        self.rbFDD["state"] = state
         
     
     def update_speed(self):
@@ -144,7 +180,7 @@ class CrypterGUI():
     def encrypt_event(self):
         """When the 'Encrypt/Decrypt' button is pressed"""
         self.currentPath = os.path.abspath(self.pathEnt.get())
-        key = self.EncryptionKey.get()
+        key = self.EncKey
         if not self.path_exists(self.currentPath) or not self.is_safe_key(key):
             return
         self.encryptionRunning = True
