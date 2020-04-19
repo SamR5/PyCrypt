@@ -33,7 +33,7 @@ def test_encryption_speed(size):
     with open(name, 'rb') as fileToEncrypt:
         data["file"] = encrypt_bytes(fileToEncrypt.read(), 'azAZ09')
     hashedKey = hash_key('azAZ09')
-    data["key"] = hashedKey[:64]
+    data["key"] = hashedKey
     with open(name+'.crypted', 'wb') as cryptedFile:
         pk.dump(data, cryptedFile)
     t1 = time.time()
@@ -46,14 +46,14 @@ def test_encryption_speed(size):
     os.remove(name+".crypted")
     return (t1 - t0), (t2 - t1)
 
-def encrypt_bytes(plaintext, key):
+def encrypt_bytes_py(plaintext, key):
     """Vignere cipher, plaintext is in bytes and key is a string"""
     m = tuple(ord(k) for k in key)
     M = len(key)
     return bytes((t + m[i%M]) % 256 for i, t in enumerate(plaintext))
 
-def decrypt_bytes(crypted, key):
-    """Reversed Vignere cipher, plaintext is in bytes and key is a string"""
+def decrypt_bytes_py(crypted, key):
+    """Reversed Vignere cipher, crypted is in bytes and key is a string"""
     m = tuple((-ord(k))%256 for k in key)
     M = len(key)
     return bytes((t + m[i%M]) % 256 for i, t in enumerate(crypted))
@@ -70,4 +70,64 @@ def ints_to_string(ints):
 
 def hash_key(key):
     return hashlib.sha256(bytes(key, encoding='utf-8')).hexdigest()
+
+############################
+# https://stackoverflow.com/questions/14887378/how-to-return-array-from-c-function-to-python-using-ctypes
+import ctypes
+from numpy.ctypeslib import ndpointer
+import timeit
+
+clibFound = False
+try:
+    lib = ctypes.CDLL("./cryu.so")
+    lib.encrypt.argtypes = [ctypes.c_char_p, ctypes.c_long, ctypes.c_char_p]
+    lib.decrypt.argtypes = [ctypes.c_char_p, ctypes.c_long, ctypes.c_char_p]
+
+    def encrypt_bytes_c(plaintext, key):
+        """plaintext is in bytes and key is str"""
+        lib.encrypt.restype = ndpointer(dtype=ctypes.c_int,
+                                        shape=(len(plaintext),))
+        result = lib.encrypt(ctypes.c_char_p(plaintext), len(plaintext),
+                             ctypes.c_char_p(key.encode('utf-8')))
+        return bytes(tuple(result))
+
+    def decrypt_bytes_c(plaintext, key):
+        """plaintext is in bytes and key is str"""
+        global result
+        lib.decrypt.restype = ndpointer(dtype=ctypes.c_int,
+                                        shape=(len(plaintext),))
+        result = lib.decrypt(ctypes.c_char_p(plaintext), len(plaintext),
+                             ctypes.c_char_p(key.encode('utf-8')))
+        return bytes(tuple(result))
+    clibFound = True
+except:
+    clibFound = False
+
+if clibFound:
+    encrypt_bytes = encrypt_bytes_c
+    decrypt_bytes = decrypt_bytes_c
+else:
+    encrypt_bytes = encrypt_bytes_py
+    decrypt_bytes = decrypt_bytes_py
+
+pt = b"AZERTYazerty"*1000
+ky = "1234"*10
+
+def test_speed(r=5, n=100):
+    pye = timeit.repeat(stmt='encrypt_bytes_py(pt, ky)',
+                        setup="from __main__ import encrypt_bytes_py, pt, ky",
+                        repeat=r, number=n)
+    pyd = timeit.repeat(stmt='decrypt_bytes_py(pt, ky)',
+                        setup="from __main__ import decrypt_bytes_py, pt, ky",
+                        repeat=r, number=n)
+    ce = timeit.repeat(stmt='encrypt_bytes_c(pt, ky)',
+                       setup="from __main__ import encrypt_bytes_c, pt, ky",
+                       repeat=r, number=n)
+    cd = timeit.repeat(stmt='decrypt_bytes_c(pt, ky)',
+                       setup="from __main__ import decrypt_bytes_c, pt, ky",
+                       repeat=r, number=n)
+    pye, pyd, ce, cd = min(pye), min(pyd), min(ce), min(cd)
+    print(f"With the C library, encryption speed is {pye/ce:.2f} faster")
+    print(f"With the C library, decryption speed is {pyd/cd:.2f} faster")
+
 

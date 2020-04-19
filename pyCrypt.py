@@ -10,7 +10,9 @@ import pickle as pk
 import string
 import cryptutils
 
+import time as t
 
+# password chars
 acceptedChars = string.printable[:string.printable.index(' ')]
 
 class CrypterGUI():
@@ -247,6 +249,7 @@ class CrypterGUI():
             messagebox.showerror("File Corrupted",
                                  "Impossible to read the file")
             self.encryptionRunning = False
+            self.widgets_lock(unlock=True)
         if "empty_dirs" in data.keys(): # ie folder
             threading.Thread(target=self.fold_decryption, args=(key, data)).start()
         else: # ie file
@@ -257,6 +260,8 @@ class CrypterGUI():
     def file_decryption(self, key, data):
         """Decrypt a file given in data"""
         if not self.is_good_key(key, data["key"]):
+            self.encryptionRunning = False
+            self.widgets_lock(unlock=True)
             return
         if not self.currentPath.endswith('.crypted'):
             name = self.currentPath
@@ -270,6 +275,8 @@ class CrypterGUI():
     def fold_decryption(self, key, data):
         """Decrypt a folder given in data"""
         if not self.is_good_key(key, data["key"]):
+            self.encryptionRunning = False
+            self.widgets_lock(unlock=True)
             return
         parent, base = os.path.split(self.currentPath)
          # eight last char are '.crypted'
@@ -308,7 +315,6 @@ class CrypterGUI():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(__file__))
-    print(os.getcwd())
     root = tk.Tk()
     root.title("PyCrypter")
     root.resizable(False, False)
