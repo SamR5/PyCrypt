@@ -22,7 +22,8 @@ The `ccryptlib.so` in the repository is compiled with __`g++ (Ubuntu 7.5.0-3ubun
 ## Updates
 
 ### 19/04/2020
- - Use external C++ library to speed up encryption.  
+ - Use external C++ library to speed up encryption.
+ - Press 'Enter' to show the key for 500ms.
 
 ### 18/04/2020
  - Disable radiobutton and the pw entry

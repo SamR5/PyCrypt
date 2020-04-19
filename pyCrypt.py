@@ -21,37 +21,16 @@ class CrypterGUI():
         self.currentPath = "" # user path entry
         self.completion = 0.0 # % completion of the encryption/decryption
         self.encryptionRunning = False
-        self.cursor = 0
         self.EncKey = ""
         self.gui()
         threading.Thread(target=self.update_speed).start()
 
-    def aaa(self, event=None):
-        if event.char in acceptedChars and event.char != '':
-            self.EncKey = self.EncKey[:self.cursor] + event.char +\
-                          self.EncKey[self.cursor:]
-            self.cursor += 1
-        else:
-            if event.keysym == "Right":
-                self.cursor = min(self.cursor+1, len(self.EncKey))
-            elif event.keysym == "Left":
-                self.cursor = max(self.cursor-1, 0)
-            elif event.keysym == "Home":
-                self.cursor = 0
-            elif event.keysym == "End":
-                self.cursor = len(self.EncKey)
-            elif event.keysym == "BackSpace":
-                if self.cursor != 0:
-                    self.EncKey = self.EncKey[:self.cursor-1] +\
-                                  self.EncKey[self.cursor:]
-                    self.cursor -= 1
-            elif event.keysym == "Delete":
-                self.EncKey = self.EncKey[:self.cursor] +\
-                              self.EncKey[self.cursor+1:]
-        if self.EncKey != '':
-            toDisp = '*'*(self.cursor-1) + self.EncKey[self.cursor-1] +\
-                     '*'*(len(self.EncKey)-self.cursor)
-            self.hiddenKey.set(toDisp)
+    def show_key(self, event=None):
+        self.keyEntry['show'] = ''
+        self.master.after(500, self.hide_key)
+
+    def hide_key(self, event=None):
+        self.keyEntry['show'] = '*'
     
     def gui(self):
         self.mainFrame = tk.Frame(self.master)
@@ -59,10 +38,10 @@ class CrypterGUI():
         self.mainFrame.pack()
         self.statusBar.pack(fill='x', side='bottom')
         
-        self.hiddenKey = tk.StringVar()
+        self.encKey = tk.StringVar()
         self.keyEntry = tk.Entry(self.mainFrame,
-                                 textvariable=self.hiddenKey)
-        self.keyEntry.bind("<KeyRelease>", self.aaa)
+                                 textvariable=self.encKey, show='*')
+        self.keyEntry.bind("<Return>", self.show_key)
         keyLab = tk.Label(self.mainFrame, text='Encryption key')
         keyLab.grid(row=0, column=0, pady=20)
         self.keyEntry.grid(row=0, column=1)
@@ -182,7 +161,7 @@ class CrypterGUI():
     def encrypt_event(self):
         """When the 'Encrypt/Decrypt' button is pressed"""
         self.currentPath = os.path.abspath(self.pathEnt.get())
-        key = self.EncKey
+        key = self.EncKey.get()
         if not self.path_exists(self.currentPath) or not self.is_safe_key(key):
             return
         self.encryptionRunning = True
